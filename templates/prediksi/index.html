@@ -2,138 +2,483 @@
 {% load static %}
 
 {% block content %}
-<!-- Kartu Statistik Dataset -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 card-hover">
-        <p class="text-xs font-medium text-slate-500 uppercase">Total Data Sampel</p>
-        <p class="text-2xl font-bold text-slate-800 mt-1">{{ total_data }} Kos</p>
-    </div>
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 card-hover">
-        <p class="text-xs font-medium text-slate-500 uppercase">Rata-rata Harga Kos</p>
-        <p class="text-2xl font-bold text-blue-600 mt-1">Rp {{ rata_total }} / bln</p>
-    </div>
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 card-hover">
-        <p class="text-xs font-medium text-slate-500 uppercase">Rentang Harga Dataset</p>
-        <p class="text-xl font-bold text-emerald-600 mt-1">Rp {{ harga_min }} - Rp {{ harga_max }}</p>
-    </div>
-</div>
+<!-- 0. BAGIAN BERANDA -->
+<section id="beranda" class="scroll-mt-28 space-y-6">
 
-<!-- Konten Utama 2 Kolom -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- Hero Banner Utama -->
+    <div class="bg-ink text-white rounded-3xl p-6 sm:p-10 card-elevated grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative overflow-hidden">
+        <!-- Kolom Kiri: Headline & Tombol Aksi -->
+        <div class="lg:col-span-7 space-y-5">
+            <div class="inline-flex items-center gap-2 bg-white/10 border border-white/15 px-3.5 py-1.5 rounded-full text-xs font-semibold text-emerald-300">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>Kota Madiun &bull; {{ total_data }} Sampel Kos Terdata</span>
+            </div>
 
-    <!-- Kolom Kiri: Form Input -->
-    <div class="lg:col-span-5 bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-fit">
-        <h2 class="text-lg font-bold text-slate-800 mb-4 border-b pb-2">⚙️ Atur Kriteria Kos</h2>
-        <form method="POST" class="space-y-4">
+            <h1 class="text-3xl sm:text-4xl lg:text-[40px] font-extrabold tracking-tight leading-[1.15]">
+                Ukur kewajaran tarif kos <span class="text-emerald-400">sebelum kamu deal sewa.</span>
+            </h1>
+
+            <p class="text-xs sm:text-sm text-emerald-100/75 leading-relaxed max-w-xl">
+                Masukkan jarak kamar ke kampus, rating penghuni, dan ketersediaan AC. TaksirKos menghitung estimasi harga bulanan memakai model Regresi Linear lalu memberi pertimbangan singkat lewat provider AI pilihanmu.
+            </p>
+
+            <div class="pt-1 flex flex-wrap items-center gap-3">
+                <a href="#kalkulator" class="bg-brand hover:bg-brandDark text-white font-bold text-xs sm:text-sm px-5 py-3 rounded-xl transition inline-flex items-center gap-2 shadow-sm">
+                    <span>Mulai Hitung Tarif</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                    </svg>
+                </a>
+                <a href="#grafik" class="bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-xs sm:text-sm px-5 py-3 rounded-xl transition">
+                    Lihat Grafik Pasar
+                </a>
+            </div>
+        </div>
+
+        <!-- Kolom Kanan: Kartu Patokan Pasar -->
+        <div class="lg:col-span-5 bg-white/[0.06] border border-white/12 rounded-2xl p-5 sm:p-6 space-y-5">
+            <div class="flex items-center justify-between border-b border-white/10 pb-4">
+                <div>
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-200/70 block">
+                        Rata-rata Tarif Umum
+                    </span>
+                    <span class="text-2xl sm:text-3xl font-extrabold text-white mt-1 block tabular-angka">
+                        Rp {{ rata_total }}
+                    </span>
+                    <span class="text-[11px] text-emerald-200/60">per bulan di area kampus</span>
+                </div>
+                <span class="text-[11px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/25 px-2.5 py-1 rounded-lg">
+                    Patokan
+                </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-black/25 border border-white/10 rounded-xl p-3.5">
+                    <span class="text-[11px] text-emerald-200/65 block">Tarif Terendah</span>
+                    <span class="text-sm sm:text-base font-extrabold text-emerald-300 mt-1 block tabular-angka">
+                        Rp {{ harga_min }}
+                    </span>
+                </div>
+                <div class="bg-black/25 border border-white/10 rounded-xl p-3.5">
+                    <span class="text-[11px] text-emerald-200/65 block">Tarif Tertinggi</span>
+                    <span class="text-sm sm:text-base font-extrabold text-white mt-1 block tabular-angka">
+                        Rp {{ harga_max }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 Kartu Metrik Ringkas -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white border border-borderline rounded-2xl p-4 sm:p-5 card-elevated">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-muted block">Kos Dianalisis</span>
+            <span class="text-2xl font-extrabold text-ink mt-1.5 block tabular-angka">{{ total_data }} Kos</span>
+            <span class="text-xs text-muted mt-1 block">Sampel sekitar kampus</span>
+        </div>
+
+        <div class="bg-white border border-borderline rounded-2xl p-4 sm:p-5 card-elevated">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-muted block">Rata-rata Sewa</span>
+            <span class="text-2xl font-extrabold text-ink mt-1.5 block tabular-angka">Rp {{ rata_total }}</span>
+            <span class="text-xs text-muted mt-1 block">Acuan bulanan dataset</span>
+        </div>
+
+        <div class="bg-white border border-borderline rounded-2xl p-4 sm:p-5 card-elevated">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-muted block">Selisih Fasilitas</span>
+            <span class="text-2xl font-extrabold text-brand mt-1.5 block tabular-angka">AC vs Non-AC</span>
+            <span class="text-xs text-muted mt-1 block">Terlihat pada grafik tarif</span>
+        </div>
+
+        <div class="bg-white border border-borderline rounded-2xl p-4 sm:p-5 card-elevated">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-muted block">Sudah Dicek</span>
+            <span class="text-2xl font-extrabold text-ink mt-1.5 block tabular-angka">{{ total_riwayat }}x</span>
+            <span class="text-xs text-muted mt-1 block">Tersimpan di database</span>
+        </div>
+    </div>
+
+    <!-- Bento Bawah: Panduan 3 Langkah + Ringkasan Pasar -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Kiri: Cara Pakai 3 Langkah -->
+        <div class="lg:col-span-5 bg-white border border-borderline rounded-2xl p-6 card-elevated flex flex-col justify-between">
+            <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-brand">Panduan Singkat</span>
+                <h2 class="text-lg font-extrabold text-ink mt-1">Cara Cek dalam 3 Langkah</h2>
+
+                <ol class="mt-5 space-y-4">
+                    <li class="flex items-start gap-3.5">
+                        <span class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 text-brand font-mono text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                            01
+                        </span>
+                        <div>
+                            <p class="text-sm font-bold text-ink">Isi Spesifikasi Kamar</p>
+                            <p class="text-xs text-muted mt-0.5 leading-relaxed">Ketik jarak tempuh ke kampus, rating ulasan, dan pilih tipe kamar AC atau Non-AC.</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3.5">
+                        <span class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 text-brand font-mono text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                            02
+                        </span>
+                        <div>
+                            <p class="text-sm font-bold text-ink">Hitung Estimasi Tarif</p>
+                            <p class="text-xs text-muted mt-0.5 leading-relaxed">Model Linear Regression langsung menghitung perkiraan tarif sewa per bulan.</p>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3.5">
+                        <span class="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 text-brand font-mono text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                            03
+                        </span>
+                        <div>
+                            <p class="text-sm font-bold text-ink">Baca Pertimbangan AI</p>
+                            <p class="text-xs text-muted mt-0.5 leading-relaxed">Lihat ulasan otomatis apakah harga tersebut tergolong wajar sebelum menyewa.</p>
+                        </div>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-borderline">
+                <a href="#kalkulator" class="text-xs font-bold text-brand hover:text-brandDark inline-flex items-center gap-1.5 transition">
+                    <span>Langsung ke Kalkulator Tarif</span>
+                    <span>&rarr;</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Kanan: Ringkasan Pasar Kos Madiun -->
+        <div class="lg:col-span-7 bg-white border border-borderline rounded-2xl p-6 card-elevated">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-brand">Insight Dataset</span>
+                    <h2 class="text-lg font-extrabold text-ink mt-1">Ringkasan Pasar Kos Madiun</h2>
+                </div>
+                <span class="text-[11px] font-mono font-semibold bg-canvas border border-borderline px-2.5 py-1 rounded-lg text-muted">
+                    {{ total_data }} Observasi
+                </span>
+            </div>
+
+            <p class="text-xs sm:text-sm text-muted leading-relaxed">
+                Tarif sewa kos mahasiswa di Kota Madiun cukup bervariasi menyesuaikan jarak ke area kampus dan kelengkapan fasilitas kamar:
+            </p>
+
+            <ul class="mt-4 space-y-3 text-xs sm:text-sm text-ink">
+                <li class="flex items-start gap-2.5 bg-canvas/70 border border-borderline/80 rounded-xl p-3">
+                    <span class="w-2 h-2 rounded-full bg-brand shrink-0 mt-1.5"></span>
+                    <span>
+                        Rentang harga pasar berada di kisaran <strong class="tabular-angka">Rp {{ harga_min }}</strong> hingga <strong class="tabular-angka">Rp {{ harga_max }}</strong> per bulan dengan rata-rata <strong class="tabular-angka">Rp {{ rata_total }}</strong>.
+                    </span>
+                </li>
+                <li class="flex items-start gap-2.5 bg-canvas/70 border border-borderline/80 rounded-xl p-3">
+                    <span class="w-2 h-2 rounded-full bg-brand shrink-0 mt-1.5"></span>
+                    <span>
+                        Kamar berfasilitas <strong class="text-brand">Ber-AC</strong> memiliki rata-rata tarif <strong class="tabular-angka">Rp {{ harga_ac_ya_rp }}</strong>, lebih tinggi dibanding kamar <strong class="text-muted">Non-AC</strong> di angka <strong class="tabular-angka">Rp {{ harga_ac_tidak_rp }}</strong>.
+                    </span>
+                </li>
+                <li class="flex items-start gap-2.5 bg-canvas/70 border border-borderline/80 rounded-xl p-3">
+                    <span class="w-2 h-2 rounded-full bg-brand shrink-0 mt-1.5"></span>
+                    <span>
+                        Semakin dekat jarak kos menuju kampus dan semakin tinggi rating ulasan penghuni, estimasi tarif bulanan cenderung ikut meningkat.
+                    </span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+</section>
+
+<!-- 1. BAGIAN KALKULATOR -->
+<section id="kalkulator" class="scroll-mt-28 mt-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+
+    <!-- Form Input -->
+    <div class="lg:col-span-6 bg-white border border-borderline rounded-2xl p-6 card-elevated">
+        <div class="mb-6">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-brand">01 &bull; Kalkulator</span>
+            <h2 class="text-xl font-extrabold text-ink mt-1">Spesifikasi Kamar Kos</h2>
+            <p class="text-xs text-muted mt-1">Masukkan jarak ke kampus, rating ulasan, dan fasilitas pendingin ruangan.</p>
+        </div>
+
+        <form id="form-prediksi" method="POST" class="space-y-5">
             {% csrf_token %}
 
-            <div>
-                <div class="flex justify-between text-sm font-medium mb-1">
-                    <label for="jarak">Jarak ke Kampus (km)</label>
-                    <span id="jarakVal" class="text-blue-600 font-bold">{{ input_data.jarak }} km</span>
+            <!-- Input Ketik Jarak -->
+            <div class="bg-canvas/80 border border-borderline rounded-xl p-4">
+                <div class="flex items-center justify-between mb-2.5">
+                    <label for="jarak" class="text-sm font-bold text-ink">Jarak ke Kampus</label>
+                    <span class="text-[11px] font-medium text-muted">Contoh: 0.8 atau 2.5</span>
                 </div>
-                <input type="range" id="jarak" name="jarak" min="0.1" max="5.0" step="0.1"
-                       value="{{ input_data.jarak }}"
-                       oninput="document.getElementById('jarakVal').innerText = this.value + ' km'"
-                       class="w-full accent-blue-600 cursor-pointer">
-            </div>
-
-            <div>
-                <div class="flex justify-between text-sm font-medium mb-1">
-                    <label for="rating">Rating Kos (1.0 - 5.0)</label>
-                    <span id="ratingVal" class="text-blue-600 font-bold">{{ input_data.rating }} ⭐</span>
+                <div class="relative flex items-center">
+                    <input
+                        type="number"
+                        id="jarak"
+                        name="jarak"
+                        min="0.1"
+                        max="25.0"
+                        step="0.1"
+                        required
+                        placeholder="0.0"
+                        value="{{ jarak_input|default:'1.5' }}"
+                        class="w-full bg-white border border-borderline focus:border-brand focus:ring-2 focus:ring-brand/15 rounded-xl py-2.5 pl-3.5 pr-12 font-mono text-sm font-bold text-ink outline-none transition tabular-angka"
+                    >
+                    <span class="absolute right-3.5 font-mono text-xs font-bold text-muted pointer-events-none">
+                        km
+                    </span>
                 </div>
-                <input type="range" id="rating" name="rating" min="1.0" max="5.0" step="0.1"
-                       value="{{ input_data.rating }}"
-                       oninput="document.getElementById('ratingVal').innerText = this.value + ' ⭐'"
-                       class="w-full accent-blue-600 cursor-pointer">
             </div>
 
+            <!-- Input Ketik Rating -->
+            <div class="bg-canvas/80 border border-borderline rounded-xl p-4">
+                <div class="flex items-center justify-between mb-2.5">
+                    <label for="rating" class="text-sm font-bold text-ink">Rating Penghuni</label>
+                    <span class="text-[11px] font-medium text-muted">Skala 1.0 – 5.0</span>
+                </div>
+                <div class="relative flex items-center">
+                    <input
+                        type="number"
+                        id="rating"
+                        name="rating"
+                        min="1.0"
+                        max="5.0"
+                        step="0.1"
+                        required
+                        placeholder="4.2"
+                        value="{{ rating_input|default:'4.2' }}"
+                        class="w-full bg-white border border-borderline focus:border-brand focus:ring-2 focus:ring-brand/15 rounded-xl py-2.5 pl-3.5 pr-14 font-mono text-sm font-bold text-ink outline-none transition tabular-angka"
+                    >
+                    <span class="absolute right-3.5 font-mono text-xs font-bold text-muted pointer-events-none">
+                        / 5.0
+                    </span>
+                </div>
+            </div>
+
+            <!-- Pilihan AC -->
             <div>
-                <label for="ac" class="block text-sm font-medium mb-1">Fasilitas AC</label>
-                <select id="ac" name="ac" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="ya" {% if input_data.ac == "ya" %}selected{% endif %}>Ya (Pakai AC)</option>
-                    <option value="tidak" {% if input_data.ac == "tidak" %}selected{% endif %}>Tidak (Non-AC)</option>
-                </select>
+                <span class="block text-sm font-bold text-ink mb-2.5">Fasilitas Pendingin</span>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="ac" value="tidak" class="peer sr-only" {% if ac_input != "ya" %}checked{% endif %}>
+                        <div class="p-3.5 rounded-xl border-2 border-borderline bg-white peer-checked:border-brand peer-checked:bg-emerald-50/60 transition flex items-center gap-2.5">
+                            <span class="w-4 h-4 rounded-full border-2 border-emerald-700/40 flex items-center justify-center shrink-0"></span>
+                            <div>
+                                <span class="block text-xs font-bold text-ink">Non-AC</span>
+                                <span class="block text-[11px] text-muted">Kipas / Ventilasi</span>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer">
+                        <input type="radio" name="ac" value="ya" class="peer sr-only" {% if ac_input == "ya" %}checked{% endif %}>
+                        <div class="p-3.5 rounded-xl border-2 border-borderline bg-white peer-checked:border-brand peer-checked:bg-emerald-50/60 transition flex items-center gap-2.5">
+                            <span class="w-4 h-4 rounded-full border-2 border-emerald-700/40 flex items-center justify-center shrink-0"></span>
+                            <div>
+                                <span class="block text-xs font-bold text-ink">Dengan AC</span>
+                                <span class="block text-[11px] text-muted">Pendingin Ruangan</span>
+                            </div>
+                        </div>
+                    </label>
+                </div>
             </div>
 
-            <button type="submit"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition shadow-sm cursor-pointer">
-                🔍 Hitung Estimasi Harga
+            <button
+                type="submit"
+                class="w-full bg-brand hover:bg-brandDark active:scale-[0.99] text-white font-bold text-sm py-3.5 px-5 rounded-xl shadow-sm transition cursor-pointer flex items-center justify-center gap-2"
+            >
+                <span>Hitung Estimasi Tarif</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                </svg>
             </button>
         </form>
     </div>
 
-    <!-- Kolom Kanan: Hasil Prediksi & Grafik -->
-    <div class="lg:col-span-7 space-y-6">
+    <!-- Kartu Hasil Estimasi -->
+    <div class="lg:col-span-6 bg-ink text-white rounded-2xl p-6 sm:p-8 card-elevated flex flex-col justify-center">
+        {% if hasil_prediksi %}
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-200/70">Hasil Estimasi Sewa</span>
+                {% if lebih_mahal %}
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-amber-400/15 text-amber-200 border border-amber-300/25 tabular-angka">
+                        +Rp {{ selisih_rp }} di atas rata-rata
+                    </span>
+                {% else %}
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-300/25 tabular-angka">
+                        Lebih hemat Rp {{ selisih_rp }}
+                    </span>
+                {% endif %}
+            </div>
 
-        <!-- Box Hasil Prediksi -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h2 class="text-lg font-bold text-slate-800 mb-3 border-b pb-2">💰 Hasil Prediksi Harga</h2>
-            {% if hasil_prediksi is not None %}
-                <div class="bg-blue-50 border border-blue-200 rounded-xl p-5">
-                    <p class="text-sm text-blue-700 font-medium">Estimasi Biaya Sewa Bulanan:</p>
-                    <p class="text-3xl font-extrabold text-blue-900 mt-1">Rp {{ hasil_prediksi }} / bulan</p>
-                    <p class="text-xs text-slate-600 mt-2">
-                        Selisih dibanding rata-rata dataset:
-                        {% if selisih_angka > 0 %}
-                            <span class="font-semibold text-rose-600">+Rp {{ selisih_harga }}</span>
-                        {% elif selisih_angka < 0 %}
-                            <span class="font-semibold text-emerald-600">-Rp {{ selisih_harga }}</span>
-                        {% else %}
-                            <span class="font-semibold text-slate-600">Rp 0 (Sama persis)</span>
-                        {% endif %}
-                    </p>
+            <div class="flex items-baseline gap-2 mb-8">
+                <span class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white tabular-angka">
+                    Rp {{ hasil_prediksi }}
+                </span>
+                <span class="text-sm font-medium text-emerald-200/70">/ bulan</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 pt-6 border-t border-white/10 text-xs">
+                <div class="bg-white/5 rounded-xl p-3.5">
+                    <span class="text-emerald-200/70 block">Jarak Kampus</span>
+                    <span class="font-bold text-white text-sm mt-1 block tabular-angka">{{ jarak_input }} km</span>
                 </div>
-            {% else %}
-                <div class="text-center py-8 text-slate-400">
-                    <p class="text-sm">Atur kriteria kos di sebelah kiri, lalu klik tombol <strong>Hitung Estimasi Harga</strong>.</p>
+                <div class="bg-white/5 rounded-xl p-3.5">
+                    <span class="text-emerald-200/70 block">Rating Kos</span>
+                    <span class="font-bold text-white text-sm mt-1 block tabular-angka">{{ rating_input }} / 5.0</span>
                 </div>
+                <div class="bg-white/5 rounded-xl p-3.5">
+                    <span class="text-emerald-200/70 block">Tipe Kamar</span>
+                    <span class="font-bold text-emerald-400 text-sm mt-1 block">
+                        {% if ac_input == "ya" %}Ber-AC{% else %}Non-AC{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            {% if analisis_ai %}
+            <div class="mt-4 bg-white/5 border border-emerald-400/20 rounded-xl p-4">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-300 block mb-1">
+                    Rekomendasi {{ ai_provider_label }} AI
+                </span>
+                <p class="text-xs sm:text-sm text-emerald-50/90 leading-relaxed">
+                    {{ analisis_ai }}
+                </p>
+            </div>
             {% endif %}
-        </div>
-
-        <!-- Box Grafik Perbandingan AC -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h2 class="text-lg font-bold text-slate-800 mb-3 border-b pb-2">📊 Rata-rata Harga Kos Berdasarkan AC</h2>
-            <canvas id="grafikAc"
-                    data-ac-ya="{{ harga_ac_ya }}"
-                    data-ac-tidak="{{ harga_ac_tidak }}"
-                    height="120"></canvas>
-        </div>
-
+        {% else %}
+            <div class="py-10 text-center">
+                <span class="inline-block text-xs font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/15 border border-emerald-400/25 px-3 py-1 rounded-full mb-3">
+                    Siap Menghitung
+                </span>
+                <h3 class="text-xl font-bold text-white">Tentukan Kriteria Kos di Sebelah Kiri</h3>
+                <p class="text-xs sm:text-sm text-emerald-100/70 mt-2 max-w-sm mx-auto leading-relaxed">
+                    Isi jarak tempuh ke kampus, rating kamar, dan pilihan AC lalu klik tombol <strong class="text-white">Hitung Estimasi Tarif</strong> untuk melihat perkiraan biaya bulanannya.
+                </p>
+            </div>
+        {% endif %}
     </div>
-</div>
 
-<!-- Tabel Dataset -->
-<div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-    <h2 class="text-lg font-bold text-slate-800 mb-3 border-b pb-2">📋 Data Sampel Kos Madiun (kos_madiun.csv)</h2>
+</section>
+
+<!-- 2. BAGIAN GRAFIK TARIF -->
+<section id="grafik" class="scroll-mt-28 mt-8 bg-white border border-borderline rounded-2xl p-6 sm:p-7 card-elevated">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-brand">02 &bull; Grafik Tarif</span>
+            <h2 class="text-lg font-extrabold text-ink mt-0.5">Perbandingan Rata-rata Tarif AC vs Non-AC</h2>
+            <p class="text-xs text-muted mt-0.5">Selisih harga sewa bulanan berdasarkan fasilitas kamar di sekitar kampus Madiun.</p>
+        </div>
+        <div class="flex items-center gap-4 text-xs font-semibold bg-canvas border border-borderline px-3.5 py-2 rounded-xl">
+            <span class="flex items-center gap-1.5 text-muted">
+                <span class="w-2.5 h-2.5 rounded-xs bg-[#C5D1C9]"></span> Non-AC
+            </span>
+            <span class="flex items-center gap-1.5 text-ink">
+                <span class="w-2.5 h-2.5 rounded-xs bg-brand"></span> Ber-AC
+            </span>
+        </div>
+    </div>
+    <div class="h-64 sm:h-72">
+        <canvas
+            id="chartAc"
+            data-non-ac="{{ harga_ac_tidak }}"
+            data-ac="{{ harga_ac_ya }}"
+        ></canvas>
+    </div>
+</section>
+
+<!-- 3. BAGIAN RIWAYAT DATABASE -->
+<section id="riwayat" class="scroll-mt-28 mt-8 bg-white border border-borderline rounded-2xl overflow-hidden card-elevated">
+    <div class="px-6 py-5 border-b border-borderline flex items-center justify-between">
+        <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-brand">03 &bull; Database SQLite</span>
+            <h2 class="text-lg font-extrabold text-ink mt-0.5">Riwayat Pengecekan Terbaru</h2>
+            <p class="text-xs text-muted mt-0.5">Catatan hasil perhitungan yang tersimpan otomatis ke database lokal.</p>
+        </div>
+        <span class="text-xs font-mono font-semibold bg-canvas border border-borderline px-3 py-1.5 rounded-lg text-muted">
+            {{ total_riwayat }} total dicek
+        </span>
+    </div>
+    {% if riwayat_list %}
     <div class="overflow-x-auto">
-        <table class="w-full text-sm text-left border-collapse">
-            <thead>
-                <tr class="bg-slate-100 text-slate-700 border-b">
-                    <th class="py-2.5 px-4">No</th>
-                    <th class="py-2.5 px-4">Jarak ke Kampus (km)</th>
-                    <th class="py-2.5 px-4">Rating</th>
-                    <th class="py-2.5 px-4">Fasilitas AC</th>
-                    <th class="py-2.5 px-4">Harga per Bulan</th>
+        <table class="w-full text-left border-collapse text-sm">
+            <thead class="bg-canvas border-b border-borderline text-[11px] font-bold uppercase tracking-wider text-muted">
+                <tr>
+                    <th class="py-3 px-6">Waktu</th>
+                    <th class="py-3 px-6">Jarak</th>
+                    <th class="py-3 px-6">Rating</th>
+                    <th class="py-3 px-6">Fasilitas</th>
+                    <th class="py-3 px-6 text-right">Hasil Estimasi</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-200">
-                {% for row in data_kos %}
-                <tr class="hover:bg-slate-50">
-                    <td class="py-2 px-4">{{ forloop.counter }}</td>
-                    <td class="py-2 px-4">{{ row.jarak_km }} km</td>
-                    <td class="py-2 px-4">{{ row.rating }}</td>
-                    <td class="py-2 px-4 uppercase font-medium">{{ row.ac }}</td>
-                    <td class="py-2 px-4 font-semibold text-slate-800">Rp {{ row.harga_rp }}</td>
+            <tbody class="divide-y divide-borderline">
+                {% for item in riwayat_list %}
+                <tr class="hover:bg-canvas/70 transition">
+                    <td class="py-3 px-6 font-mono text-xs text-muted">{{ item.created_at|date:"d M Y, H:i" }}</td>
+                    <td class="py-3 px-6 tabular-angka">{{ item.jarak_km }} km</td>
+                    <td class="py-3 px-6 tabular-angka">{{ item.rating }} / 5.0</td>
+                    <td class="py-3 px-6">{% if item.ac == "ya" %}Ber-AC{% else %}Non-AC{% endif %}</td>
+                    <td class="py-3 px-6 text-right font-bold text-ink tabular-angka">Rp {{ item.harga_rp }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-</div>
+    {% else %}
+    <p class="px-6 py-6 text-xs text-muted">Belum ada riwayat perhitungan tersimpan. Coba hitung estimasi tarif di atas.</p>
+    {% endif %}
+</section>
+
+<!-- 4. BAGIAN DATA REFERENSI & INFO MODEL -->
+<section id="tentang" class="scroll-mt-28 mt-8 space-y-6">
+    <div class="bg-white border border-borderline rounded-2xl overflow-hidden card-elevated">
+        <div class="px-6 py-5 border-b border-borderline flex items-center justify-between">
+            <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-brand">04 &bull; Dataset & Model</span>
+                <h2 class="text-lg font-extrabold text-ink mt-0.5">Data Referensi Kos Madiun</h2>
+                <p class="text-xs text-muted mt-0.5">Daftar observasi tarif sewa yang menjadi acuan pelatihan model prediksi.</p>
+            </div>
+            <span class="text-xs font-mono font-semibold bg-canvas border border-borderline px-3 py-1.5 rounded-lg text-muted">
+                {{ total_data }} data
+            </span>
+        </div>
+        <div class="overflow-x-auto max-h-72">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead class="bg-canvas border-b border-borderline text-[11px] font-bold uppercase tracking-wider text-muted sticky top-0">
+                    <tr>
+                        <th class="py-3 px-6">No</th>
+                        <th class="py-3 px-6">Jarak ke Kampus</th>
+                        <th class="py-3 px-6">Rating</th>
+                        <th class="py-3 px-6">Fasilitas</th>
+                        <th class="py-3 px-6 text-right">Tarif / Bulan</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-borderline">
+                    {% for row in data_kos %}
+                    <tr class="hover:bg-canvas/70 transition">
+                        <td class="py-3 px-6 font-mono text-xs text-muted">{{ forloop.counter }}</td>
+                        <td class="py-3 px-6 font-medium tabular-angka">{{ row.jarak_km }} km</td>
+                        <td class="py-3 px-6 font-medium tabular-angka">{{ row.rating }} / 5.0</td>
+                        <td class="py-3 px-6">
+                            {% if row.ac == "ya" %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-brand border border-emerald-200/80">
+                                    Ber-AC
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-muted border border-slate-200/80">
+                                    Non-AC
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-6 text-right font-bold text-ink tabular-angka">Rp {{ row.harga_rp }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white border border-borderline rounded-2xl p-6 card-elevated">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-brand">Arsitektur Sistem</span>
+        <h3 class="text-base font-extrabold text-ink mt-1">Linear Regression &amp; AI API</h3>
+        <p class="text-xs sm:text-sm text-muted mt-1.5 leading-relaxed">
+            Perhitungan angka tarif dijalankan menggunakan model <strong class="text-ink">Linear Regression</strong> dari dataset <strong class="text-ink">{{ total_data }} kos di Madiun</strong>, kemudian hasil prediksinya dikirim ke <strong class="text-ink">{{ ai_provider_label }}</strong> untuk menghasilkan evaluasi kewajaran harga secara otomatis dan dicatat ke database <strong class="text-ink">SQLite</strong>.
+        </p>
+    </div>
+</section>
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'js/chart_ac.js' %}"></script>
+<script src="{% static 'js/chart_ac.js' %}?v=6"></script>
 {% endblock %}

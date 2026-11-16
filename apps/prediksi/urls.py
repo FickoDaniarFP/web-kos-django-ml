@@ -5,4 +5,5 @@ app_name = "prediksi"
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("atur-api/", views.atur_ai_api, name="atur_ai_api"),
 ]
