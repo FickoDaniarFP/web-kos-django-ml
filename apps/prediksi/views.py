@@ -124,9 +124,6 @@ def atur_ai_api(request):
     custom_base_url = ""
     custom_model = ""
     if provider == "openai_compatible":
-        if not settings.DEBUG:
-            messages.error(request, "Mode API kustom hanya tersedia saat aplikasi berjalan lokal.")
-            return redirect("prediksi:index")
         custom_base_url = request.POST.get("base_url", "").strip()
         custom_model = request.POST.get("model", "").strip()
         try:

@@ -1,4 +1,4 @@
-# rediksi Harga Kos Sekitar Kampus Madiun
+# Prediksi Harga Kos Sekitar Kampus Madiun
 
 Aplikasi web berbasis **Django** dan **Machine Learning (Linear Regression)** untuk memprediksi estimasi biaya sewa kos bulanan di sekitar kampus Madiun berdasarkan jarak ke kampus, rating, dan fasilitas AC.
 
@@ -22,7 +22,7 @@ Aplikasi web berbasis **Django** dan **Machine Learning (Linear Regression)** un
 - `dataset/` : File dataset `kos_madiun.csv` dan model terlatih `model_kos.joblib`
 
 ## Mengatur API AI
-Pilih **API AI** di navbar untuk memilih Groq, Google Gemini, atau API kustom yang kompatibel dengan format OpenAI. Masukkan key provider lalu simpan; key disimpan pada sesi browser sampai browser ditutup dan dapat dihapus dari menu yang sama. API kustom memerlukan URL dasar HTTPS dan nama model, serta hanya diizinkan saat aplikasi lokal berjalan dengan `DEBUG=True`.
+Pilih **API AI** di navbar untuk memilih Groq, Google Gemini, atau API kustom yang kompatibel dengan format OpenAI. Masukkan key provider lalu simpan; key disimpan pada sesi browser sampai browser ditutup dan dapat dihapus dari menu yang sama. API kustom memerlukan URL dasar HTTPS publik dan nama model yang valid.
 
 Sebagai alternatif, Groq dan Gemini dapat memakai environment variable `GROQ_API_KEY` dan `GEMINI_API_KEY`. Key sesi provider yang dipilih akan digunakan lebih dahulu daripada environment variable.
 

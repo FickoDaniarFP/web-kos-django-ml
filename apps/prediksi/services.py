@@ -182,14 +182,6 @@ def analisis_kos_ai(
                 url = "https://api.groq.com/openai/v1/chat/completions"
                 model = model or default_model
             else:
-                if not settings.DEBUG:
-                    return _fallback_analysis(
-                        "API kustom hanya dapat digunakan saat aplikasi berjalan lokal.",
-                        jarak,
-                        rating,
-                        ac,
-                        harga_rp,
-                    )
                 url = get_openai_compatible_url(base_url)
                 if not model.strip():
                     return _fallback_analysis(
