@@ -1,4 +1,5 @@
 import ipaddress
+import json
 import logging
 import os
 from urllib.parse import urlsplit
@@ -11,6 +12,17 @@ from django.conf import settings
 MODEL_PATH = os.path.join(settings.BASE_DIR, "dataset", "model_kos.joblib")
 model = joblib.load(MODEL_PATH)
 logger = logging.getLogger(__name__)
+
+AI_PROVIDER_DEFAULTS = {
+    "groq": ("GROQ_API_KEY", "openai/gpt-oss-20b"),
+    "gemini": ("GEMINI_API_KEY", "gemini-2.5-flash"),
+    "openai_compatible": ("", ""),
+}
+AI_PROVIDER_LABELS = {
+    "groq": "Groq",
+    "gemini": "Gemini",
+    "openai_compatible": "API kustom",
+}
 
 
 def _analisis_lokal(jarak, rating, ac, harga_rp):
@@ -82,19 +94,28 @@ def _extract_openai_content(payload):
     return content.strip() if isinstance(content, str) else ""
 
 
-def _request_openai_compatible(url, api_key, model, prompt):
+def _request_openai_compatible(url, api_key, model, prompt, reasoning_effort=None):
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+    }
+    if reasoning_effort:
+        payload.update({
+            "max_completion_tokens": 512,
+            "reasoning_effort": reasoning_effort,
+            "reasoning_format": "hidden",
+        })
+    else:
+        payload["max_tokens"] = 180
+
     response = requests.post(
         url,
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
-        json={
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7,
-            "max_tokens": 180,
-        },
+        json=payload,
         timeout=20,
     )
     response.raise_for_status()
@@ -134,6 +155,36 @@ def _request_gemini(api_key, model, prompt):
     )
 
 
+def _request_ai_provider(provider, api_key, model, base_url, prompt):
+    if provider == "gemini":
+        return _request_gemini(
+            api_key,
+            model or AI_PROVIDER_DEFAULTS["gemini"][1],
+            prompt,
+        )
+
+    if provider == "groq":
+        return _request_openai_compatible(
+            "https://api.groq.com/openai/v1/chat/completions",
+            api_key,
+            model or AI_PROVIDER_DEFAULTS["groq"][1],
+            prompt,
+            reasoning_effort="low",
+        )
+
+    if provider == "openai_compatible":
+        if not model.strip():
+            raise ValueError("Nama model API kustom belum diatur.")
+        return _request_openai_compatible(
+            get_openai_compatible_url(base_url),
+            api_key,
+            model,
+            prompt,
+        )
+
+    raise ValueError("Provider AI tidak dikenal.")
+
+
 def analisis_kos_ai(
     jarak,
     rating,
@@ -144,30 +195,33 @@ def analisis_kos_ai(
     base_url="",
     model="",
 ):
-    provider_defaults = {
-        "groq": ("GROQ_API_KEY", "llama-3.1-8b-instant"),
-        "gemini": ("GEMINI_API_KEY", "gemini-2.5-flash"),
-        "openai_compatible": ("", ""),
-    }
-    provider_labels = {
-        "groq": "Groq",
-        "gemini": "Gemini",
-        "openai_compatible": "API kustom",
-    }
-    if provider not in provider_defaults:
+    if provider not in AI_PROVIDER_DEFAULTS:
         return _fallback_analysis("Provider AI tidak dikenal.", jarak, rating, ac, harga_rp)
 
-    environment_key, default_model = provider_defaults[provider]
+    environment_key, _ = AI_PROVIDER_DEFAULTS[provider]
     api_key = api_key or (os.getenv(environment_key) if environment_key else None)
     prompt = (
-        f"Kamu adalah asisten penilai sewa kos. Berikan rekomendasi singkat dalam Bahasa Indonesia. "
+        "Kamu adalah asisten penilai sewa kos. Jawab dalam Bahasa Indonesia, maksimal 45 kata. "
+        "Gunakan format wajib berikut, tepat satu bagian per baris:\n"
+        "Penilaian: [apakah harga wajar]\n"
+        "Pertimbangan: [alasan singkat]\n"
+        "Saran: [saran praktis]\n"
+        "Jangan gunakan Markdown, tanda bintang, daftar bernomor, atau pembuka. "
         f"Data: jarak={jarak} km, rating={rating}, fasilitas={'AC' if ac == 'ya' else 'Non-AC'}, "
-        f"estimasi_harga={harga_rp}. Jelaskan apakah harga tersebut wajar dan berikan saran praktis."
+        f"estimasi_harga={harga_rp}. Nilai kewajaran harga dan beri saran praktis berdasarkan data ini saja."
     )
 
     if not api_key:
         return _fallback_analysis(
-            f"API key {provider_labels[provider]} belum diatur.",
+            f"API key {AI_PROVIDER_LABELS[provider]} belum diatur.",
+            jarak,
+            rating,
+            ac,
+            harga_rp,
+        )
+    if provider == "openai_compatible" and not model.strip():
+        return _fallback_analysis(
+            "Nama model API kustom belum diatur.",
             jarak,
             rating,
             ac,
@@ -175,27 +229,11 @@ def analisis_kos_ai(
         )
 
     try:
-        if provider == "gemini":
-            content = _request_gemini(api_key, model or default_model, prompt)
-        else:
-            if provider == "groq":
-                url = "https://api.groq.com/openai/v1/chat/completions"
-                model = model or default_model
-            else:
-                url = get_openai_compatible_url(base_url)
-                if not model.strip():
-                    return _fallback_analysis(
-                        "Nama model API kustom belum diatur.",
-                        jarak,
-                        rating,
-                        ac,
-                        harga_rp,
-                    )
-            content = _request_openai_compatible(url, api_key, model, prompt)
+        content = _request_ai_provider(provider, api_key, model, base_url, prompt)
         if content:
             return content
         return _fallback_analysis(
-            f"API {provider_labels[provider]} tidak mengembalikan rekomendasi.",
+            f"API {AI_PROVIDER_LABELS[provider]} tidak mengembalikan rekomendasi.",
             jarak,
             rating,
             ac,
@@ -204,12 +242,79 @@ def analisis_kos_ai(
     except (requests.RequestException, ValueError, KeyError, TypeError):
         logger.warning("Request ke provider AI %s gagal.", provider, exc_info=True)
         return _fallback_analysis(
-            f"API {provider_labels[provider]} gagal dihubungi.",
+            f"API {AI_PROVIDER_LABELS[provider]} gagal dihubungi.",
             jarak,
             rating,
             ac,
             harga_rp,
         )
+
+
+def analisis_perbandingan_tarif_ai(
+    harga_non_ac,
+    harga_ac,
+    provider="groq",
+    api_key=None,
+    base_url="",
+    model="",
+):
+    if provider not in AI_PROVIDER_DEFAULTS:
+        raise ValueError("Provider AI tidak dikenal.")
+
+    environment_key, _ = AI_PROVIDER_DEFAULTS[provider]
+    api_key = api_key or (os.getenv(environment_key) if environment_key else None)
+    if not api_key:
+        raise ValueError(f"API key {AI_PROVIDER_LABELS[provider]} belum diatur.")
+
+    difference = harga_ac - harga_non_ac
+    percentage = difference / harga_non_ac * 100 if harga_non_ac else 0
+    prompt = (
+        "Jelaskan grafik perbandingan tarif sewa kos bulanan di Madiun dalam Bahasa Indonesia. "
+        "Jelaskan kamar mana yang lebih mahal dan selisihnya, lalu beri satu interpretasi singkat. "
+        "Gunakan maksimal 60 kata, 2-3 kalimat, teks biasa tanpa Markdown. "
+        f"Data grafik saat ini: Non-AC Rp{harga_non_ac}; Ber-AC Rp{harga_ac}; "
+        f"selisih Ber-AC terhadap Non-AC Rp{difference} ({percentage:.1f}%). "
+        "Jangan membuat klaim di luar data tersebut."
+    )
+    content = _request_ai_provider(provider, api_key, model, base_url, prompt)
+    if not content:
+        raise ValueError(
+            f"API {AI_PROVIDER_LABELS[provider]} tidak mengembalikan penjelasan."
+        )
+    return content
+
+
+def analisis_scatter_ai(
+    data_points,
+    provider="groq",
+    api_key=None,
+    base_url="",
+    model="",
+):
+    if provider not in AI_PROVIDER_DEFAULTS:
+        raise ValueError("Provider AI tidak dikenal.")
+    if not data_points:
+        raise ValueError("Data scatter plot tidak tersedia.")
+
+    environment_key, _ = AI_PROVIDER_DEFAULTS[provider]
+    api_key = api_key or (os.getenv(environment_key) if environment_key else None)
+    if not api_key:
+        raise ValueError(f"API key {AI_PROVIDER_LABELS[provider]} belum diatur.")
+
+    prompt = (
+        "Jelaskan scatter plot harga sewa kos di Madiun dalam Bahasa Indonesia. "
+        "Sumbu X adalah jarak ke kampus dalam km, sumbu Y adalah harga sewa bulanan dalam rupiah, "
+        "dan tiap titik menunjukkan fasilitas AC atau Non-AC. Sebutkan pola umum hubungan jarak "
+        "dan harga serta perbedaan kelompok AC secara hati-hati; jangan menganggap korelasi sebagai sebab-akibat. "
+        "Gunakan maksimal 80 kata, 2-4 kalimat, teks biasa tanpa Markdown. "
+        f"Data titik: {json.dumps(data_points, ensure_ascii=False)}"
+    )
+    content = _request_ai_provider(provider, api_key, model, base_url, prompt)
+    if not content:
+        raise ValueError(
+            f"API {AI_PROVIDER_LABELS[provider]} tidak mengembalikan penjelasan scatter plot."
+        )
+    return content
 
 
 

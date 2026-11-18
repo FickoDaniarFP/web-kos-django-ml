@@ -18,7 +18,7 @@ Aplikasi web berbasis **Django** dan **Machine Learning (Linear Regression)** un
 - `apps/prediksi/` : Modul layanan prediksi ML (`services.py`), `views.py`, dan `urls.py`
 - `apps/analytics/` : Modul pengolahan statistik deskriptif dataset (`services.py`)
 - `templates/` : Kerangka antarmuka HTML modular (`base.html` dan `prediksi/index.html`)
-- `static/` : Aset CSS kustom (`style.css`) dan skrip grafik Chart.js (`chart_ac.js`)
+- `static/` : Aset CSS kustom (`style.css`) dan grafik Chart.js batang serta scatter plot (`chart_ac.js`)
 - `dataset/` : File dataset `kos_madiun.csv` dan model terlatih `model_kos.joblib`
 
 ## Mengatur API AI
@@ -31,3 +31,13 @@ Sebagai alternatif, Groq dan Gemini dapat memakai environment variable `GROQ_API
 2. Pasang seluruh pustaka yang dibutuhkan:
    ```bash
    pip install -r requirements.txt
+   ```
+3. Jalankan migrasi database SQLite:
+   ```bash
+   python manage.py migrate
+   ```
+4. Jalankan server pengembangan Django:
+   ```bash
+   python manage.py runserver
+   ```
+5. Buka browser dan akses `http://127.0.0.1:8000/`.

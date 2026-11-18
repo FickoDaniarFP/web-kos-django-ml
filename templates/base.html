@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="id" class="{% if hasil_prediksi %}no-smooth-scroll{% endif %}">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,12 +24,14 @@
                         borderline: '#DCE5DF',
                         brand: '#15803D',
                         brandDark: '#116530',
+                        gold: '#D97706',
+                        teal: '#0D9488',
                     }
                 }
             }
         }
     </script>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=7">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=10">
 </head>
 <body class="bg-canvas text-ink font-sans antialiased selection:bg-brand/15 selection:text-brand">
 
@@ -46,7 +48,7 @@
             </a>
 
             <!-- Menu Navigasi -->
-            <nav class="flex flex-wrap items-center justify-center gap-1 bg-canvas border border-borderline p-1 rounded-full">
+            <nav id="primary-navigation" class="flex flex-wrap items-center justify-center gap-1 bg-canvas border border-borderline p-1 rounded-full">
                 <a href="#beranda" class="px-3.5 py-1.5 rounded-full text-xs font-bold bg-ink text-white transition">
                     Beranda
                 </a>
@@ -62,8 +64,8 @@
                 <a href="#tentang" class="px-3.5 py-1.5 rounded-full text-xs font-semibold text-muted hover:text-ink hover:bg-white transition">
                     Info Model
                 </a>
-                <details class="relative">
-                    <summary class="list-none cursor-pointer px-3.5 py-1.5 rounded-full text-xs font-semibold text-muted hover:text-ink hover:bg-white transition">
+                <details id="ai-api-menu" class="relative">
+                    <summary id="ai-api-menu-trigger" class="list-none cursor-pointer px-3.5 py-1.5 rounded-full text-xs font-semibold text-muted hover:text-ink hover:bg-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
                         API AI
                     </summary>
                     <div class="absolute right-0 top-full z-50 mt-2 w-80 max-w-[90vw] rounded-2xl border border-borderline bg-white p-4 text-left shadow-xl">
@@ -142,9 +144,11 @@
             </nav>
 
             <!-- Badge Status -->
-            <div class="hidden lg:flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 rounded-full">
-                <span class="w-2 h-2 rounded-full bg-brand animate-pulse"></span>
-                <span class="text-xs font-semibold text-brandDark">Regresi + AI API</span>
+            <div class="hidden lg:flex items-center gap-2 bg-teal/10 border border-teal/20 px-3 py-1.5 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-teal animate-pulse"></span>
+                <span class="text-xs font-semibold text-teal">
+                    {{ ai_provider_label }} AI {% if ai_api_key_configured %}siap{% else %}dipilih{% endif %}
+                </span>
             </div>
         </div>
     </header>
@@ -184,20 +188,52 @@
             updateCustomApiFields();
         }
 
-        const predictionForm = document.getElementById("form-prediksi");
-        if (predictionForm) {
-            predictionForm.addEventListener("submit", () => {
-                sessionStorage.setItem("prediksiScrollY", String(window.scrollY));
+        const primaryNavigation = document.getElementById("primary-navigation");
+        if (primaryNavigation) {
+            const navLinks = Array.from(primaryNavigation.querySelectorAll('a[href^="#"]'));
+            const aiMenu = document.getElementById("ai-api-menu");
+            const aiMenuTrigger = document.getElementById("ai-api-menu-trigger");
+            const activeClasses = ["bg-ink", "text-white", "font-bold"];
+            const inactiveClasses = ["text-muted", "font-semibold", "hover:text-ink", "hover:bg-white"];
+
+            const setActiveItem = (activeItem) => {
+                navLinks.concat(aiMenuTrigger ? [aiMenuTrigger] : []).forEach((item) => {
+                    if (!item) return;
+                    const isActive = item === activeItem;
+                    activeClasses.forEach((className) => item.classList.toggle(className, isActive));
+                    inactiveClasses.forEach((className) => item.classList.toggle(className, !isActive));
+                    if (isActive) {
+                        item.setAttribute("aria-current", "location");
+                    } else {
+                        item.removeAttribute("aria-current");
+                    }
+                });
+            };
+
+            const restoreActiveLink = () => {
+                const activeLink = navLinks.find((link) => link.hash === window.location.hash) || navLinks[0];
+                setActiveItem(activeLink);
+            };
+
+            navLinks.forEach((link) => {
+                link.addEventListener("click", () => setActiveItem(link));
             });
+            window.addEventListener("hashchange", restoreActiveLink);
+
+            if (aiMenu && aiMenuTrigger) {
+                aiMenu.addEventListener("toggle", () => {
+                    aiMenuTrigger.setAttribute("aria-expanded", String(aiMenu.open));
+                    if (aiMenu.open) {
+                        setActiveItem(aiMenuTrigger);
+                    } else {
+                        restoreActiveLink();
+                    }
+                });
+            }
+
+            restoreActiveLink();
         }
 
-        {% if hasil_prediksi %}
-            const savedScrollY = sessionStorage.getItem("prediksiScrollY");
-            if (savedScrollY !== null) {
-                window.scrollTo(0, Number(savedScrollY));
-                sessionStorage.removeItem("prediksiScrollY");
-            }
-        {% endif %}
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% block scripts %}{% endblock %}
