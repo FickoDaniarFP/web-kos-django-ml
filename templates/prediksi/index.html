@@ -611,8 +611,43 @@
         <span class="text-[11px] font-bold uppercase tracking-wider text-brand">Arsitektur Sistem</span>
         <h3 class="text-base font-extrabold text-ink mt-1">Linear Regression &amp; AI API</h3>
         <p class="text-xs sm:text-sm text-muted mt-1.5 leading-relaxed">
-            Perhitungan angka tarif dijalankan menggunakan model <strong class="text-ink">Linear Regression</strong> dari dataset <strong class="text-ink">{{ total_data }} kos di Madiun</strong>, kemudian hasil prediksinya dikirim ke <strong class="text-ink">{{ ai_provider_label }}</strong> untuk menghasilkan evaluasi kewajaran harga secara otomatis dan dicatat ke database <strong class="text-ink">SQLite</strong>.
+            Tarif dihitung oleh model <strong class="text-ink">Linear Regression</strong> berdasarkan jarak ke kampus, rating penghuni, dan fasilitas AC. Hasil numerik kemudian dievaluasi oleh <strong class="text-ink">{{ ai_provider_label }}</strong> untuk menjelaskan kewajaran harga dalam Bahasa Indonesia.
         </p>
+
+        <div class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="rounded-xl border border-borderline bg-canvas/70 px-4 py-3">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-muted">MAE</p>
+                <p class="mt-1 text-lg font-extrabold text-ink tabular-angka">Rp {{ model_mae }}</p>
+                <p class="mt-1 text-[11px] leading-relaxed text-muted">Rata-rata selisih prediksi terhadap data observasi.</p>
+            </div>
+            <div class="rounded-xl border border-borderline bg-canvas/70 px-4 py-3">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-muted">RMSE</p>
+                <p class="mt-1 text-lg font-extrabold text-ink tabular-angka">Rp {{ model_rmse }}</p>
+                <p class="mt-1 text-[11px] leading-relaxed text-muted">Besarnya akar rata-rata kuadrat kesalahan prediksi.</p>
+            </div>
+            <div class="rounded-xl border border-borderline bg-canvas/70 px-4 py-3">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Koefisien Determinasi</p>
+                <p class="mt-1 text-lg font-extrabold text-brand tabular-angka">{{ model_r2 }} <span class="text-xs text-muted">/ 1,000</span></p>
+                <p class="mt-1 text-[11px] leading-relaxed text-muted">Sekitar {{ model_r2_persen }}% variasi tarif dapat dijelaskan model pada data ini.</p>
+            </div>
+        </div>
+
+        <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="rounded-xl border border-borderline px-4 py-3">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-ink">Input Model</p>
+                <ul class="mt-2 space-y-1.5 text-xs text-muted">
+                    <li><strong class="text-ink">Jarak:</strong> jarak kamar ke kampus dalam kilometer.</li>
+                    <li><strong class="text-ink">Rating:</strong> penilaian penghuni dengan rentang 1,0–5,0.</li>
+                    <li><strong class="text-ink">AC:</strong> AC bernilai 1, sedangkan Non-AC bernilai 0.</li>
+                </ul>
+            </div>
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-amber-800">Catatan Interpretasi</p>
+                <p class="mt-2 text-xs leading-relaxed text-amber-900">
+                    Metrik dihitung menggunakan seluruh <strong>{{ total_data }} data observasi</strong>, sehingga lebih tepat sebagai gambaran kecocokan model pada dataset, bukan hasil evaluasi data yang benar-benar terpisah.
+                </p>
+            </div>
+        </div>
     </div>
 </section>
 {% endblock %}
