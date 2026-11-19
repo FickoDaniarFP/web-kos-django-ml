@@ -90,9 +90,13 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="max-w-6xl mx-auto px-4 sm:px-6 py-6 border-t border-borderline text-xs text-muted flex flex-col sm:flex-row justify-between gap-2">
+    <footer class="max-w-6xl mx-auto px-4 sm:px-6 py-6 border-t border-borderline text-xs text-muted grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 items-center gap-4">
         <span>Dataset Observasi Kos Sekitar Kampus Kota Madiun</span>
-        <span>Linear Regression &bull; {{ total_data }} Data Sampel</span>
+        <div class="lg:text-center">
+            <span class="block text-ink font-semibold">Dikembangkan oleh Ficko Daniar Fachryza Putra</span>
+            <span class="mt-0.5 block">NIM: 253307043 &bull; D3 Teknologi Informasi PNM</span>
+        </div>
+        <span class="sm:text-right">Linear Regression &bull; {{ total_data }} Data Sampel</span>
     </footer>
 
     <script>
