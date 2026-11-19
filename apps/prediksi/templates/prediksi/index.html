@@ -78,7 +78,7 @@
     </div>
 
     <!-- 4 Kartu Metrik Ringkas -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="bg-white border border-borderline rounded-2xl p-4 sm:p-5 card-elevated">
             <span class="text-[11px] font-bold uppercase tracking-wider text-muted block">Kos Dianalisis</span>
             <span class="text-2xl font-extrabold text-ink mt-1.5 block tabular-angka">{{ total_data }} Kos</span>
@@ -97,11 +97,6 @@
             <span class="text-xs text-muted mt-1 block">Terlihat pada grafik tarif</span>
         </div>
 
-        <div class="bg-white border border-borderline rounded-2xl p-4 sm:p-5 card-elevated">
-            <span class="text-[11px] font-bold uppercase tracking-wider text-muted block">Sudah Dicek</span>
-            <span class="text-2xl font-extrabold text-ink mt-1.5 block tabular-angka">{{ total_riwayat }}x</span>
-            <span class="text-xs text-muted mt-1 block">Tersimpan di database</span>
-        </div>
     </div>
 
     <!-- Bento Bawah: Panduan 3 Langkah + Ringkasan Pasar -->
@@ -486,77 +481,6 @@
     </div>
 </section>
 
-<!-- 4. BAGIAN RIWAYAT DATABASE -->
-<section id="riwayat" class="scroll-mt-28 mt-8 bg-white border border-borderline rounded-2xl overflow-hidden card-elevated">
-    <div class="px-6 py-5 border-b border-borderline flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-            <span class="text-[11px] font-bold uppercase tracking-wider text-brand">04 &bull; Database SQLite</span>
-            <h2 class="text-lg font-extrabold text-ink mt-0.5">Riwayat Pengecekan Terbaru</h2>
-            <p class="text-xs text-muted mt-0.5">Catatan hasil perhitungan yang tersimpan otomatis ke database lokal.</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <span class="text-xs font-mono font-semibold bg-canvas border border-borderline px-3 py-1.5 rounded-lg text-muted">
-                {{ total_riwayat }} total dicek
-            </span>
-            {% if total_riwayat %}
-            <form
-                method="post"
-                action="{% url 'prediksi:hapus_semua_riwayat' %}"
-                data-ajax-delete
-                onsubmit="return confirm('Hapus semua riwayat pengecekan? Tindakan ini tidak dapat dibatalkan.')"
-            >
-                {% csrf_token %}
-                <button type="submit" class="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 transition hover:bg-red-100">
-                    Hapus semua
-                </button>
-            </form>
-            {% endif %}
-        </div>
-    </div>
-    <p id="riwayat-feedback" class="hidden px-6 py-3 text-sm text-brand" role="status"></p>
-    {% if riwayat_list %}
-    <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse text-sm">
-            <thead class="bg-canvas border-b border-borderline text-[11px] font-bold uppercase tracking-wider text-muted">
-                <tr>
-                    <th class="py-3 px-6">Waktu</th>
-                    <th class="py-3 px-6">Jarak</th>
-                    <th class="py-3 px-6">Rating</th>
-                    <th class="py-3 px-6">Fasilitas</th>
-                    <th class="py-3 px-6 text-right">Hasil Estimasi</th>
-                    <th class="py-3 px-6 text-right">Aksi</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-borderline">
-                {% for item in riwayat_list %}
-                <tr class="hover:bg-canvas/70 transition">
-                    <td class="py-3 px-6 font-mono text-xs text-muted">{{ item.created_at|date:"d M Y, H:i" }}</td>
-                    <td class="py-3 px-6 tabular-angka">{{ item.jarak_km }} km</td>
-                    <td class="py-3 px-6 tabular-angka">{{ item.rating }} / 5.0</td>
-                    <td class="py-3 px-6">{% if item.ac == "ya" %}Ber-AC{% else %}Non-AC{% endif %}</td>
-                    <td class="py-3 px-6 text-right font-bold text-ink tabular-angka">Rp {{ item.harga_rp }}</td>
-                    <td class="py-3 px-6 text-right">
-                        <form
-                            method="post"
-                            action="{% url 'prediksi:hapus_riwayat' item.pk %}"
-                            data-ajax-delete
-                            onsubmit="return confirm('Hapus riwayat ini? Tindakan ini tidak dapat dibatalkan.')"
-                        >
-                            {% csrf_token %}
-                            <button type="submit" class="rounded-lg px-3 py-1.5 text-xs font-bold text-red-700 transition hover:bg-red-50">
-                                Hapus
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <p class="px-6 py-6 text-xs text-muted">Belum ada riwayat perhitungan tersimpan. Coba hitung estimasi tarif di atas.</p>
-    {% endif %}
-</section>
 
 <!-- 5. BAGIAN DATA REFERENSI & INFO MODEL -->
 <section id="tentang" class="scroll-mt-28 mt-8 space-y-6">

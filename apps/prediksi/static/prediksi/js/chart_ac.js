@@ -205,7 +205,7 @@ function bindChartExplanations() {
 
 function replacePredictionSections(html) {
     const updatedDocument = new DOMParser().parseFromString(html, "text/html");
-    const sectionIds = ["kartu-hasil", "grafik", "scatter", "riwayat"];
+    const sectionIds = ["kartu-hasil", "grafik", "scatter"];
     const replacements = sectionIds.map(function (id) {
         return {
             current: document.getElementById(id),
@@ -259,69 +259,9 @@ function bindPredictionForm() {
     });
 }
 
-async function refreshHistorySection() {
-    const response = await fetch(window.location.pathname + window.location.search, {
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-    });
-    const html = await response.text();
-    if (!response.ok) {
-        throw new Error("Daftar riwayat tidak dapat dimuat ulang.");
-    }
-
-    const updatedDocument = new DOMParser().parseFromString(html, "text/html");
-    const currentSection = document.getElementById("riwayat");
-    const updatedSection = updatedDocument.getElementById("riwayat");
-    if (!currentSection || !updatedSection) {
-        throw new Error("Bagian riwayat tidak ditemukan.");
-    }
-    currentSection.replaceWith(updatedSection);
-    return updatedSection;
-}
-
-function bindHistoryDeletion() {
-    document.addEventListener("submit", async function (event) {
-        if (event.defaultPrevented) return;
-        const form = event.target.closest("form[data-ajax-delete]");
-        if (!form) return;
-        event.preventDefault();
-
-        const submitButton = form.querySelector('button[type="submit"]');
-        if (submitButton) submitButton.disabled = true;
-
-        let result;
-        try {
-            const response = await fetch(form.action, {
-                method: "POST",
-                body: new FormData(form),
-                headers: { "X-Requested-With": "XMLHttpRequest" },
-            });
-            result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.error || "Riwayat gagal dihapus.");
-            }
-        } catch (error) {
-            if (submitButton) submitButton.disabled = false;
-            window.alert(error.message || "Riwayat gagal dihapus.");
-            return;
-        }
-
-        try {
-            const historySection = await refreshHistorySection();
-            const feedback = historySection.querySelector("#riwayat-feedback");
-            if (feedback) {
-                feedback.textContent = result.message;
-                feedback.classList.remove("hidden");
-            }
-        } catch (error) {
-            window.alert("Riwayat berhasil dihapus, tetapi tampilan gagal diperbarui: " + error.message);
-        }
-    });
-}
-
 document.addEventListener("DOMContentLoaded", function () {
     bindChartExplanations();
     bindPredictionForm();
-    bindHistoryDeletion();
     initializeCharts();
 });
 

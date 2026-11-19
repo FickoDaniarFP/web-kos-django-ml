@@ -4,14 +4,11 @@ import logging
 
 from django.conf import settings
 from django.contrib import messages
-from django.db import OperationalError
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 import requests
 from apps.analytics.services import format_rupiah, get_statistik_kos
-from apps.prediksi.models import RiwayatPrediksi
 from apps.prediksi.services import (
     AI_PROVIDER_LABELS,
     analisis_kos_ai,
@@ -103,17 +100,6 @@ def index(request):
                 request.session.get("ai_custom_model", ""),
             )
 
-            try:
-                RiwayatPrediksi.objects.create(
-                    jarak_km=jarak_input,
-                    rating=rating_input,
-                    ac=ac_input,
-                    estimasi_harga=hasil_angka,
-                    analisis_ai=analisis_ai,
-                )
-            except OperationalError:
-                pass
-
             context.update({
                 "jarak_input": jarak_input,
                 "rating_input": rating_input,
@@ -129,18 +115,7 @@ def index(request):
                 "analisis_ai": analisis_ai,
             })
 
-    try:
-        total_riwayat = RiwayatPrediksi.objects.count()
-        riwayat_list = list(RiwayatPrediksi.objects.order_by("-created_at")[:5])
-        for item in riwayat_list:
-            item.harga_rp = format_rupiah(item.estimasi_harga)
-    except OperationalError:
-        total_riwayat = 0
-        riwayat_list = []
-
     context.update({
-        "riwayat_list": riwayat_list,
-        "total_riwayat": total_riwayat,
         "harga_ac_ya_rp": format_rupiah(context["harga_ac_ya"]),
         "harga_ac_tidak_rp": format_rupiah(context["harga_ac_tidak"]),
         "ai_provider_label": AI_PROVIDERS[provider][0],
@@ -292,22 +267,3 @@ def analisis_scatter_ai_view(request):
         )
 
     return JsonResponse({"explanation": explanation})
-
-
-@require_POST
-def hapus_riwayat(request, pk):
-    riwayat = get_object_or_404(RiwayatPrediksi, pk=pk)
-    riwayat.delete()
-    if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        return JsonResponse({"message": "Riwayat berhasil dihapus."})
-    messages.success(request, "Riwayat berhasil dihapus.")
-    return redirect(f"{reverse('prediksi:index')}#riwayat")
-
-
-@require_POST
-def hapus_semua_riwayat(request):
-    deleted_count, _ = RiwayatPrediksi.objects.all().delete()
-    if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        return JsonResponse({"message": f"{deleted_count} riwayat berhasil dihapus."})
-    messages.success(request, f"{deleted_count} riwayat berhasil dihapus.")
-    return redirect(f"{reverse('prediksi:index')}#riwayat")

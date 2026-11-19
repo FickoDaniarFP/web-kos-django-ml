@@ -4,7 +4,6 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from requests import ConnectionError, HTTPError
 
-from apps.prediksi.models import RiwayatPrediksi
 from apps.prediksi.services import (
     _request_ai_provider,
     analisis_kos_ai,
@@ -295,7 +294,6 @@ class ChartAiAnalysisTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'id="kartu-hasil"')
-        self.assertContains(response, 'id="riwayat"')
         self.assertContains(response, 'data-non-ac="800000"')
         self.assertContains(response, 'data-ac="875000"')
         self.assertContains(response, 'data-estimasi="875000"')
@@ -345,86 +343,6 @@ class ChartAiAnalysisTests(TestCase):
         self.assertEqual(set(data_points[0]), {"jarak_km", "harga_rp", "ac"})
 
 
-class RiwayatDeletionTests(TestCase):
-    def create_riwayat(self):
-        return RiwayatPrediksi.objects.create(
-            jarak_km=1.5,
-            rating=4.2,
-            ac="ya",
-            estimasi_harga=900000,
-            analisis_ai="Rekomendasi",
-        )
-
-    def test_history_section_shows_row_and_clear_all_actions(self):
-        item = self.create_riwayat()
-
-        response = self.client.get(reverse("prediksi:index"))
-
-        self.assertContains(response, reverse("prediksi:hapus_semua_riwayat"))
-        self.assertContains(
-            response,
-            reverse("prediksi:hapus_riwayat", args=[item.pk]),
-        )
-        self.assertContains(response, "Hapus semua")
-        self.assertContains(response, "Hapus")
-
-    def test_deletes_one_history_record(self):
-        target = self.create_riwayat()
-        other = self.create_riwayat()
-
-        response = self.client.post(
-            reverse("prediksi:hapus_riwayat", args=[target.pk])
-        )
-
-        self.assertRedirects(response, f"{reverse('prediksi:index')}#riwayat")
-        self.assertFalse(RiwayatPrediksi.objects.filter(pk=target.pk).exists())
-        self.assertTrue(RiwayatPrediksi.objects.filter(pk=other.pk).exists())
-
-    def test_ajax_deletes_one_history_record_without_redirecting(self):
-        target = self.create_riwayat()
-
-        response = self.client.post(
-            reverse("prediksi:hapus_riwayat", args=[target.pk]),
-            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"message": "Riwayat berhasil dihapus."})
-        self.assertFalse(RiwayatPrediksi.objects.filter(pk=target.pk).exists())
-
-    def test_deletes_all_history_records(self):
-        self.create_riwayat()
-        self.create_riwayat()
-
-        response = self.client.post(reverse("prediksi:hapus_semua_riwayat"))
-
-        self.assertRedirects(response, f"{reverse('prediksi:index')}#riwayat")
-        self.assertEqual(RiwayatPrediksi.objects.count(), 0)
-
-    def test_ajax_deletes_all_history_records_without_redirecting(self):
-        self.create_riwayat()
-        self.create_riwayat()
-
-        response = self.client.post(
-            reverse("prediksi:hapus_semua_riwayat"),
-            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"message": "2 riwayat berhasil dihapus."})
-        self.assertEqual(RiwayatPrediksi.objects.count(), 0)
-
-    def test_history_deletion_requires_post(self):
-        item = self.create_riwayat()
-
-        response = self.client.get(
-            reverse("prediksi:hapus_riwayat", args=[item.pk])
-        )
-
-        self.assertEqual(response.status_code, 405)
-        self.assertTrue(RiwayatPrediksi.objects.filter(pk=item.pk).exists())
-
-
 class PredictionInputValidationTests(TestCase):
     def test_rejects_non_numeric_prediction_inputs(self):
         response = self.client.post(
@@ -438,8 +356,6 @@ class PredictionInputValidationTests(TestCase):
             "Jarak dan rating harus berupa angka yang valid.",
             status_code=400,
         )
-        self.assertEqual(RiwayatPrediksi.objects.count(), 0)
-
     def test_rejects_empty_prediction_inputs(self):
         response = self.client.post(
             reverse("prediksi:index"),
@@ -447,8 +363,6 @@ class PredictionInputValidationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(RiwayatPrediksi.objects.count(), 0)
-
     def test_rejects_nan_and_infinite_prediction_inputs(self):
         response = self.client.post(
             reverse("prediksi:index"),
@@ -461,8 +375,6 @@ class PredictionInputValidationTests(TestCase):
             "Jarak dan rating harus berupa angka terbatas yang valid.",
             status_code=400,
         )
-        self.assertEqual(RiwayatPrediksi.objects.count(), 0)
-
     def test_rejects_out_of_range_jarak_and_rating(self):
         response_jarak = self.client.post(
             reverse("prediksi:index"),
@@ -485,8 +397,6 @@ class PredictionInputValidationTests(TestCase):
             "Rating penghuni harus berada di antara 1.0 hingga 5.0.",
             status_code=400,
         )
-        self.assertEqual(RiwayatPrediksi.objects.count(), 0)
-
     def test_rejects_invalid_ac_choice(self):
         response = self.client.post(
             reverse("prediksi:index"),
@@ -499,5 +409,4 @@ class PredictionInputValidationTests(TestCase):
             "Pilihan fasilitas pendingin harus Ber-AC atau Non-AC.",
             status_code=400,
         )
-        self.assertEqual(RiwayatPrediksi.objects.count(), 0)
 
