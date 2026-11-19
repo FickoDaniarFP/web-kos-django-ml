@@ -13,8 +13,13 @@ MODEL_PATH = os.path.join(settings.BASE_DIR, "dataset", "model_kos.joblib")
 model = joblib.load(MODEL_PATH)
 logger = logging.getLogger(__name__)
 
+DEFAULT_GROQ_MODELS = (
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
+)
+
 AI_PROVIDER_DEFAULTS = {
-    "groq": ("GROQ_API_KEY", "openai/gpt-oss-20b"),
+    "groq": ("GROQ_API_KEY", DEFAULT_GROQ_MODELS[0]),
     "gemini": ("GEMINI_API_KEY", "gemini-2.5-flash"),
     "openai_compatible": ("", ""),
 }
@@ -25,32 +30,13 @@ AI_PROVIDER_LABELS = {
 }
 
 
-def _analisis_lokal(jarak, rating, ac, harga_rp):
-    if ac == "ya":
-        if jarak <= 1.5 and rating >= 4.5:
-            return (
-                f"Harga {harga_rp} masih wajar untuk kamar ber-AC dengan rating tinggi dan jarak dekat ke kampus. "
-                "Ini menunjukkan value-for-money yang cukup baik untuk kebutuhan mahasiswa."
-            )
-        return (
-            f"Harga {harga_rp} terbilang masuk akal untuk kamar ber-AC; estimasi ini masih layak bila kualitas "
-            "fasilitas dan lokasi sesuai kebutuhanmu."
-        )
-
-    if jarak <= 1.5 and rating >= 4.5:
-        return (
-            f"Harga {harga_rp} untuk kamar non-AC masih wajar mengingat jarak strategis dan rating yang bagus. "
-            "Cek fasilitas tambahan agar keputusan sewa tetap menguntungkan."
-        )
-
-    return (
-        f"Harga {harga_rp} berada dalam kisaran umum untuk kamar non-AC. Pastikan lokasi dan fasilitas dasar "
-        "masih sesuai kebutuhanmu agar tidak terlalu mahal untuk tipe kamar ini."
-    )
-
-
-def _fallback_analysis(reason, jarak, rating, ac, harga_rp):
-    return f"{reason} Rekomendasi lokal: {_analisis_lokal(jarak, rating, ac, harga_rp)}"
+def _resolve_api_key(provider, api_key):
+    if api_key:
+        return api_key
+    environment_key, _ = AI_PROVIDER_DEFAULTS[provider]
+    if provider == "groq":
+        return settings.GROQ_API_KEY
+    return os.getenv(environment_key) if environment_key else None
 
 
 def get_openai_compatible_url(base_url):
@@ -164,13 +150,31 @@ def _request_ai_provider(provider, api_key, model, base_url, prompt):
         )
 
     if provider == "groq":
-        return _request_openai_compatible(
-            "https://api.groq.com/openai/v1/chat/completions",
-            api_key,
-            model or AI_PROVIDER_DEFAULTS["groq"][1],
-            prompt,
-            reasoning_effort="low",
-        )
+        groq_models = settings.GROQ_MODELS or DEFAULT_GROQ_MODELS
+        for index, groq_model in enumerate(groq_models):
+            try:
+                return _request_openai_compatible(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    api_key,
+                    groq_model,
+                    prompt,
+                    reasoning_effort=(
+                        "low" if groq_model.startswith("openai/gpt-oss-") else None
+                    ),
+                )
+            except requests.HTTPError as error:
+                response = error.response
+                if (
+                    response is None
+                    or response.status_code != 429
+                    or index == len(groq_models) - 1
+                ):
+                    raise
+                logger.warning(
+                    "Groq model %s was rate-limited; trying model %s.",
+                    groq_model,
+                    groq_models[index + 1],
+                )
 
     if provider == "openai_compatible":
         if not model.strip():
@@ -196,10 +200,9 @@ def analisis_kos_ai(
     model="",
 ):
     if provider not in AI_PROVIDER_DEFAULTS:
-        return _fallback_analysis("Provider AI tidak dikenal.", jarak, rating, ac, harga_rp)
+        return "Provider AI tidak dikenal."
 
-    environment_key, _ = AI_PROVIDER_DEFAULTS[provider]
-    api_key = api_key or (os.getenv(environment_key) if environment_key else None)
+    api_key = _resolve_api_key(provider, api_key)
     prompt = (
         "Kamu adalah asisten penilai sewa kos. Jawab dalam Bahasa Indonesia, maksimal 45 kata. "
         "Gunakan format wajib berikut, tepat satu bagian per baris:\n"
@@ -212,42 +215,18 @@ def analisis_kos_ai(
     )
 
     if not api_key:
-        return _fallback_analysis(
-            f"API key {AI_PROVIDER_LABELS[provider]} belum diatur.",
-            jarak,
-            rating,
-            ac,
-            harga_rp,
-        )
+        return f"API key {AI_PROVIDER_LABELS[provider]} belum diatur."
     if provider == "openai_compatible" and not model.strip():
-        return _fallback_analysis(
-            "Nama model API kustom belum diatur.",
-            jarak,
-            rating,
-            ac,
-            harga_rp,
-        )
+        return "Nama model API kustom belum diatur."
 
     try:
         content = _request_ai_provider(provider, api_key, model, base_url, prompt)
         if content:
             return content
-        return _fallback_analysis(
-            f"API {AI_PROVIDER_LABELS[provider]} tidak mengembalikan rekomendasi.",
-            jarak,
-            rating,
-            ac,
-            harga_rp,
-        )
+        return f"API {AI_PROVIDER_LABELS[provider]} tidak mengembalikan rekomendasi."
     except (requests.RequestException, ValueError, KeyError, TypeError):
         logger.warning("Request ke provider AI %s gagal.", provider, exc_info=True)
-        return _fallback_analysis(
-            f"API {AI_PROVIDER_LABELS[provider]} gagal dihubungi.",
-            jarak,
-            rating,
-            ac,
-            harga_rp,
-        )
+        return f"API {AI_PROVIDER_LABELS[provider]} gagal dihubungi."
 
 
 def analisis_perbandingan_tarif_ai(
@@ -261,8 +240,7 @@ def analisis_perbandingan_tarif_ai(
     if provider not in AI_PROVIDER_DEFAULTS:
         raise ValueError("Provider AI tidak dikenal.")
 
-    environment_key, _ = AI_PROVIDER_DEFAULTS[provider]
-    api_key = api_key or (os.getenv(environment_key) if environment_key else None)
+    api_key = _resolve_api_key(provider, api_key)
     if not api_key:
         raise ValueError(f"API key {AI_PROVIDER_LABELS[provider]} belum diatur.")
 
@@ -296,8 +274,7 @@ def analisis_scatter_ai(
     if not data_points:
         raise ValueError("Data scatter plot tidak tersedia.")
 
-    environment_key, _ = AI_PROVIDER_DEFAULTS[provider]
-    api_key = api_key or (os.getenv(environment_key) if environment_key else None)
+    api_key = _resolve_api_key(provider, api_key)
     if not api_key:
         raise ValueError(f"API key {AI_PROVIDER_LABELS[provider]} belum diatur.")
 

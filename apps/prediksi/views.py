@@ -30,6 +30,14 @@ AI_PROVIDERS = {
 }
 
 
+def _get_provider_api_key(request, provider):
+    if provider == "groq":
+        request.session.pop("ai_api_key_groq", None)
+        request.session.pop("groq_api_key", None)
+        return settings.GROQ_API_KEY
+    return request.session.get(f"ai_api_key_{provider}")
+
+
 def _scatter_points(rows):
     return [
         {
@@ -68,9 +76,7 @@ def index(request):
     provider = request.session.get("ai_provider", "groq")
     if provider not in AI_PROVIDERS or (provider == "openai_compatible" and not settings.DEBUG):
         provider = "groq"
-    api_key = request.session.get(f"ai_api_key_{provider}")
-    if provider == "groq":
-        api_key = api_key or request.session.get("groq_api_key")
+    api_key = _get_provider_api_key(request, provider)
     environment_key = AI_PROVIDERS[provider][1]
     status_code = 200
 
@@ -137,13 +143,8 @@ def index(request):
         "total_riwayat": total_riwayat,
         "harga_ac_ya_rp": format_rupiah(context["harga_ac_ya"]),
         "harga_ac_tidak_rp": format_rupiah(context["harga_ac_tidak"]),
-        "ai_provider": provider,
         "ai_provider_label": AI_PROVIDERS[provider][0],
-        "ai_api_key_saved": bool(api_key),
         "ai_api_key_configured": bool(api_key or (environment_key and os.getenv(environment_key))),
-        "ai_custom_base_url": request.session.get("ai_custom_base_url", ""),
-        "ai_custom_model": request.session.get("ai_custom_model", ""),
-        "ai_custom_provider_enabled": settings.DEBUG,
     })
     return render(request, "prediksi/index.html", context, status=status_code)
 
@@ -165,12 +166,19 @@ def atur_ai_api(request):
             request.session.pop("ai_custom_model", None)
         if request.session.get("ai_provider", "groq") == provider:
             request.session["ai_provider"] = "groq"
-        messages.success(request, f"Konfigurasi {AI_PROVIDERS[provider][0]} di sesi ini sudah dihapus.")
+        if provider == "groq":
+            message = "Key Groq dikelola melalui GROQ_API_KEY di environment server."
+        else:
+            message = f"Konfigurasi {AI_PROVIDERS[provider][0]} di sesi ini sudah dihapus."
+        messages.success(request, message)
         return redirect("prediksi:index")
 
     request.session["ai_provider"] = provider
     request.session.set_expiry(0)
     api_key = request.POST.get("api_key", "").strip()
+    if provider == "groq" and api_key:
+        messages.error(request, "Masukkan GROQ_API_KEY melalui file .env atau environment deployment.")
+        return redirect("prediksi:index")
     if len(api_key) > 512:
         messages.error(request, "API key terlalu panjang.")
         return redirect("prediksi:index")
@@ -189,23 +197,33 @@ def atur_ai_api(request):
             messages.error(request, "Isi URL API dan nama model kustom dengan benar.")
             return redirect("prediksi:index")
 
-    current_api_key = request.session.get(f"ai_api_key_{provider}")
-    if provider == "groq":
-        current_api_key = current_api_key or request.session.get("groq_api_key")
+    current_api_key = _get_provider_api_key(request, provider)
     env_name = AI_PROVIDERS[provider][1]
-    has_environment_key = bool(env_name and os.getenv(env_name))
+    has_environment_key = (
+        bool(current_api_key)
+        if provider == "groq"
+        else bool(env_name and os.getenv(env_name))
+    )
     if not api_key and not current_api_key and not has_environment_key:
-        messages.error(request, "Masukkan API key untuk provider yang dipilih.")
+        if provider == "groq":
+            message = "Atur GROQ_API_KEY melalui file .env atau environment deployment."
+        else:
+            message = "Masukkan API key untuk provider yang dipilih."
+        messages.error(request, message)
         return redirect("prediksi:index")
 
-    if api_key:
+    if api_key and provider != "groq":
         request.session[f"ai_api_key_{provider}"] = api_key
     if provider == "openai_compatible":
         request.session["ai_custom_base_url"] = custom_base_url
         request.session["ai_custom_model"] = custom_model
     request.session["ai_provider"] = provider
     request.session.set_expiry(0)
-    messages.success(request, f"Pengaturan {AI_PROVIDERS[provider][0]} tersimpan untuk sesi browser ini.")
+    if provider == "groq":
+        message = "Groq aktif; API key dibaca dari environment server."
+    else:
+        message = f"Pengaturan {AI_PROVIDERS[provider][0]} tersimpan untuk sesi browser ini."
+    messages.success(request, message)
 
     return redirect("prediksi:index")
 
@@ -216,9 +234,7 @@ def analisis_grafik_ai(request):
     if provider not in AI_PROVIDERS or (provider == "openai_compatible" and not settings.DEBUG):
         provider = "groq"
 
-    api_key = request.session.get(f"ai_api_key_{provider}")
-    if provider == "groq":
-        api_key = api_key or request.session.get("groq_api_key")
+    api_key = _get_provider_api_key(request, provider)
 
     try:
         harga_non_ac = int(request.POST["harga_non_ac"])
@@ -255,9 +271,7 @@ def analisis_scatter_ai_view(request):
     if provider not in AI_PROVIDERS or (provider == "openai_compatible" and not settings.DEBUG):
         provider = "groq"
 
-    api_key = request.session.get(f"ai_api_key_{provider}")
-    if provider == "groq":
-        api_key = api_key or request.session.get("groq_api_key")
+    api_key = _get_provider_api_key(request, provider)
 
     data_points = _scatter_points(get_statistik_kos()["data_kos"])
     try:

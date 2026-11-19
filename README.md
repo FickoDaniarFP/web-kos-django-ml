@@ -15,16 +15,16 @@ Aplikasi web berbasis **Django** dan **Machine Learning (Linear Regression)** un
 
 ## Struktur Direktori
 - `config/` : Pengaturan utama dan konfigurasi URL root Django
-- `apps/prediksi/` : Modul layanan prediksi ML (`services.py`), `views.py`, dan `urls.py`
-- `apps/analytics/` : Modul pengolahan statistik deskriptif dataset (`services.py`)
-- `templates/` : Kerangka antarmuka HTML modular (`base.html` dan `prediksi/index.html`)
-- `static/` : Aset CSS kustom (`style.css`) dan grafik Chart.js batang serta scatter plot (`chart_ac.js`)
+- `apps/prediksi/` : Fitur prediksi (`views.py`, `services.py`, `urls.py`, dan `models.py`) beserta template dan aset UI milik app
+- `apps/analytics/` : Pengolahan statistik dataset, terpisah dari fitur prediksi
 - `dataset/` : File dataset `kos_madiun.csv` dan model terlatih `model_kos.joblib`
 
 ## Mengatur API AI
-Pilih **API AI** di navbar untuk memilih Groq, Google Gemini, atau API kustom yang kompatibel dengan format OpenAI. Masukkan key provider lalu simpan; key disimpan pada sesi browser sampai browser ditutup dan dapat dihapus dari menu yang sama. API kustom memerlukan URL dasar HTTPS publik dan nama model yang valid.
+Groq adalah provider default. Untuk pengembangan lokal, salin `.env.example` menjadi `.env`, lalu isi `GROQ_API_KEY`. Key Groq hanya dibaca server dan tidak disimpan di sesi browser.
 
-Sebagai alternatif, Groq dan Gemini dapat memakai environment variable `GROQ_API_KEY` dan `GEMINI_API_KEY`. Key sesi provider yang dipilih akan digunakan lebih dahulu daripada environment variable.
+`GROQ_MODELS` adalah daftar model Groq dipisahkan koma. Jika sebuah model mengembalikan HTTP 429 (rate limit), aplikasi mencoba model berikutnya. Default menggunakan `openai/gpt-oss-20b` lalu `openai/gpt-oss-120b`; daftar ini dapat diganti melalui environment variable. Lihat [katalog model Groq](https://console.groq.com/docs/models) untuk model yang tersedia pada akunmu.
+
+Saat deploy ke Vercel, tambahkan `GROQ_API_KEY` dan, bila perlu, `GROQ_MODELS` pada **Project Settings → Environment Variables**. Jangan unggah `.env`; Vercel menyediakan nilai tersebut sebagai environment variable saat aplikasi berjalan. Status provider ditampilkan di navbar; pengaturan key tidak tersedia di UI.
 
 ## Cara Menjalankan Aplikasi
 1. Buka terminal dan arahkan ke direktori proyek `web_kos`.
@@ -32,12 +32,23 @@ Sebagai alternatif, Groq dan Gemini dapat memakai environment variable `GROQ_API
    ```bash
    pip install -r requirements.txt
    ```
-3. Jalankan migrasi database SQLite:
+3. Siapkan environment lokal:
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+   Isi `GROQ_API_KEY` di `.env`, lalu jalankan migrasi database SQLite:
    ```bash
    python manage.py migrate
    ```
-4. Jalankan server pengembangan Django:
-   ```bash
+4. Aktifkan mode pengembangan lalu jalankan server (PowerShell):
+   ```powershell
+   $env:DEBUG = "True"
    python manage.py runserver
    ```
-5. Buka browser dan akses `http://127.0.0.1:8000/`.
+   `runserver` hanya melayani aset app secara langsung ketika `DEBUG=True`.
+5. Untuk mode production, biarkan `DEBUG=False` dan kumpulkan aset sebelum menjalankan server:
+   ```bash
+   python manage.py collectstatic --no-input
+   ```
+   WhiteNoise menyajikan aset hasil `collectstatic`.
+6. Buka browser dan akses `http://127.0.0.1:8000/`.

@@ -1,12 +1,49 @@
 from unittest.mock import Mock, patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
+from requests import ConnectionError, HTTPError
+
 from apps.prediksi.models import RiwayatPrediksi
-from apps.prediksi.services import analisis_kos_ai, analisis_scatter_ai
+from apps.prediksi.services import (
+    _request_ai_provider,
+    analisis_kos_ai,
+    analisis_scatter_ai,
+)
 
 
 class AiApiSessionTests(TestCase):
+    def test_navbar_does_not_render_api_settings_form(self):
+        response = self.client.get(reverse("prediksi:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="ai-api-menu"')
+        self.assertNotContains(response, 'id="ai-api-form"')
+        self.assertContains(response, "Groq AI")
+
+    @override_settings(GROQ_API_KEY="environment-groq-key")
+    def test_groq_key_comes_from_environment_not_browser_session(self):
+        session = self.client.session
+        session["ai_api_key_groq"] = "legacy-session-key"
+        session.save()
+
+        response = self.client.get(reverse("prediksi:index"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["ai_api_key_configured"])
+        self.assertNotIn("ai_api_key_groq", self.client.session)
+        self.assertNotContains(response, "legacy-session-key")
+
+    @override_settings(GROQ_API_KEY="environment-groq-key")
+    def test_groq_key_cannot_be_saved_from_browser_form(self):
+        response = self.client.post(
+            reverse("prediksi:atur_ai_api"),
+            {"provider": "groq", "api_key": "browser-submitted-key"},
+        )
+
+        self.assertRedirects(response, reverse("prediksi:index"))
+        self.assertNotIn("ai_api_key_groq", self.client.session)
+
     def test_saves_gemini_key_and_selects_provider(self):
         response = self.client.post(
             reverse("prediksi:atur_ai_api"),
@@ -74,6 +111,77 @@ class AiApiSessionTests(TestCase):
 
 
 class AiProviderRequestTests(TestCase):
+    @override_settings(GROQ_API_KEY="")
+    def test_missing_groq_key_returns_status_without_local_recommendation(self):
+        result = analisis_kos_ai(1.0, 4.5, "ya", "900.000", "groq")
+
+        self.assertEqual(result, "API key Groq belum diatur.")
+        self.assertNotIn("Rekomendasi lokal", result)
+
+    @patch(
+        "apps.prediksi.services._request_ai_provider",
+        side_effect=ConnectionError("Groq tidak dapat dihubungi"),
+    )
+    def test_ai_failure_does_not_return_local_recommendation(self, _request):
+        result = analisis_kos_ai(1.0, 4.5, "ya", "900.000", "groq", "test-key")
+
+        self.assertEqual(result, "API Groq gagal dihubungi.")
+        self.assertNotIn("Rekomendasi lokal", result)
+
+    @override_settings(
+        GROQ_MODELS=("openai/gpt-oss-20b", "llama-3.3-70b-versatile")
+    )
+    @patch("apps.prediksi.services._request_openai_compatible")
+    def test_retries_next_groq_model_after_rate_limit(self, request_model):
+        request_model.side_effect = [
+            HTTPError("429 Too Many Requests", response=Mock(status_code=429)),
+            "Jawaban dari model cadangan",
+        ]
+
+        result = _request_ai_provider("groq", "test-key", "", "", "prompt")
+
+        self.assertEqual(result, "Jawaban dari model cadangan")
+        self.assertEqual(request_model.call_count, 2)
+        self.assertEqual(request_model.call_args_list[0].args[2], "openai/gpt-oss-20b")
+        self.assertEqual(request_model.call_args_list[0].kwargs["reasoning_effort"], "low")
+        self.assertEqual(
+            request_model.call_args_list[1].args[2],
+            "llama-3.3-70b-versatile",
+        )
+        self.assertIsNone(request_model.call_args_list[1].kwargs["reasoning_effort"])
+
+    @override_settings(
+        GROQ_MODELS=("openai/gpt-oss-20b", "llama-3.3-70b-versatile")
+    )
+    @patch("apps.prediksi.services._request_openai_compatible")
+    def test_does_not_retry_groq_for_non_rate_limit_errors(self, request_model):
+        request_model.side_effect = HTTPError(
+            "401 Unauthorized",
+            response=Mock(status_code=401),
+        )
+
+        with self.assertRaises(HTTPError):
+            _request_ai_provider("groq", "test-key", "", "", "prompt")
+
+        self.assertEqual(request_model.call_count, 1)
+
+    @override_settings(GROQ_API_KEY="settings-groq-key")
+    @patch("apps.prediksi.services.requests.post")
+    def test_reads_groq_key_from_environment_settings(self, post):
+        response = Mock()
+        response.json.return_value = {
+            "choices": [{"message": {"content": "Rekomendasi Groq"}}]
+        }
+        post.return_value = response
+
+        result = analisis_kos_ai(1.0, 4.5, "ya", "900.000", "groq")
+
+        self.assertEqual(result, "Rekomendasi Groq")
+        self.assertEqual(
+            post.call_args.kwargs["headers"]["Authorization"],
+            "Bearer settings-groq-key",
+        )
+
     @patch("apps.prediksi.services.requests.post")
     def test_sends_scatter_data_to_ai_provider(self, post):
         response = Mock()
@@ -177,7 +285,7 @@ class ChartAiAnalysisTests(TestCase):
         "apps.prediksi.views.hitung_prediksi_harga",
         side_effect=[800000, 875000],
     )
-    @patch("apps.prediksi.views.analisis_kos_ai", return_value="Analisis lokal")
+    @patch("apps.prediksi.views.analisis_kos_ai", return_value="Analisis AI")
     def test_new_prediction_updates_both_ac_chart_values(self, _analysis, _predict):
         response = self.client.post(
             reverse("prediksi:index"),
@@ -197,12 +305,12 @@ class ChartAiAnalysisTests(TestCase):
         self.assertContains(response, "Rp 800.000")
         self.assertContains(response, "Rp 875.000")
 
+    @override_settings(GROQ_API_KEY="test-key")
     @patch("apps.prediksi.views.analisis_perbandingan_tarif_ai")
     def test_returns_ai_explanation_for_dataset_chart(self, analyze):
         analyze.return_value = "Tarif ber-AC lebih tinggi berdasarkan rata-rata dataset."
         session = self.client.session
         session["ai_provider"] = "groq"
-        session["ai_api_key_groq"] = "test-key"
         session.save()
 
         response = self.client.post(
@@ -220,12 +328,12 @@ class ChartAiAnalysisTests(TestCase):
         self.assertEqual(args[2], "groq")
         self.assertEqual(args[3], "test-key")
 
+    @override_settings(GROQ_API_KEY="test-key")
     @patch("apps.prediksi.views.analisis_scatter_ai")
     def test_returns_ai_explanation_for_scatter_dataset(self, analyze):
         analyze.return_value = "Harga cenderung berubah terhadap jarak."
         session = self.client.session
         session["ai_provider"] = "groq"
-        session["ai_api_key_groq"] = "test-key"
         session.save()
 
         response = self.client.post(reverse("prediksi:analisis_scatter_ai"))
